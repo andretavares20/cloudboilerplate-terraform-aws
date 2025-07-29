@@ -22,3 +22,8 @@ variable "security_group_id" {
   type        = string
   description = "ID do Security Group"
 }
+
+variable "iam_instance_profile" {
+  description = "Nome do perfil IAM anexado à EC2"
+  type        = string
+}
