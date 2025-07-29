@@ -1,4 +1,7 @@
 terraform {
+
+    backend "s3" {}
+
     required_version = "1.12.2"
 
     required_providers {
@@ -15,29 +18,29 @@ provider "aws" {
   region = "us-east-1"
 }
 
-resource "aws_s3_bucket" "my-test-bucket"{
-  bucket = "cloud.boiler.plate-terraform-state"
+# resource "aws_s3_bucket" "my-test-bucket"{
+#   bucket = "cloud.boiler.plate-terraform-state"
 
-  tags = {
-    Name = "My bucket"
-    Environment = "Dev"
-    ManagedBy = "Terraform"
-  }
-}
+#   tags = {
+#     Name = "My bucket"
+#     Environment = "Dev"
+#     ManagedBy = "Terraform"
+#   }
+# }
 
-resource "aws_s3_bucket_ownership_controls" "this" {
-  bucket = aws_s3_bucket.my-test-bucket.id
+# resource "aws_s3_bucket_ownership_controls" "this" {
+#   bucket = aws_s3_bucket.my-test-bucket.id
 
-  rule {
-    object_ownership = "BucketOwnerPreferred"
-  }
-}
+#   rule {
+#     object_ownership = "BucketOwnerPreferred"
+#   }
+# }
 
-resource "aws_s3_bucket_acl" "this" {
-  bucket     = aws_s3_bucket.my-test-bucket.id
-  acl        = "private"
-  depends_on = [aws_s3_bucket_ownership_controls.this]
-}
+# resource "aws_s3_bucket_acl" "this" {
+#   bucket     = aws_s3_bucket.my-test-bucket.id
+#   acl        = "private"
+#   depends_on = [aws_s3_bucket_ownership_controls.this]
+# }
 
 module "vpc" {
   source          = "./modules/vpc"
@@ -55,6 +58,7 @@ module "ec2" {
   instance_type      = "t3.micro"
   subnet_id = module.vpc.public_subnets_ids[0]
   security_group_id  = module.security_groups.ec2_sg_id
+  iam_instance_profile  = module.iam.instance_profile_name
 }
 
 output "ec2_public_ip" {
@@ -77,11 +81,26 @@ module "rds" {
   db_instance_class      = "db.t3.micro"
   allocated_storage      = 20
   engine_version         = "8.0.35"
-  subnet_ids = module.vpc.public_subnets_ids
+  subnet_ids             = module.vpc.private_subnets_ids
   vpc_security_group_ids = [module.security_groups.rds_sg_id]
 }
 
 module "security_groups" {
   source = "./modules/security-groups"
   vpc_id = module.vpc.vpc_id
+  project = var.project
+}
+
+module "iam" {
+  source  = "./modules/iam"
+  project = var.project
+}
+
+module "alb" {
+  source             = "./modules/alb"
+  project            = var.project
+  vpc_id             = module.vpc.vpc_id
+  public_subnets = module.vpc.public_subnets_ids
+  alb_security_group = module.security_groups.alb_sg_id
+  instance_id        = module.ec2.instance_id
 }
