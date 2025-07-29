@@ -23,6 +23,12 @@ resource "aws_iam_role_policy_attachment" "readonly" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
 }
 
+resource "aws_iam_role_policy_attachment" "cloudwatch_logs" {
+  role       = aws_iam_role.this.name
+  policy_arn = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
+}
+
+
 resource "aws_iam_instance_profile" "this" {
   name = "${var.project}-instance-profile"
   role = aws_iam_role.this.name
